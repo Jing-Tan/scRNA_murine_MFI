@@ -81,9 +81,8 @@ DimPlot(Data.integrated, reduction = "umap", label = TRUE, repel = TRUE)
 saveRDS(Data.integrated, file = "~/Data.integrated.rds")
 
 ### Find Markers and assign cell type identity to clusters
-new.cluster.ids <- c("Neut","SC-Mo","SC-M¦Õ","Mo","CM-Mo","M¦Õ","cDC","pDC",
-                     "B","Plas","NK1","NK2","CD4-TN", "CD8-TN","CD-TEFF","MAIT/¦Ã¦ÄT","CD4-TP", "Th2","Treg",
-                     "Trop","Trop","Endo1","Endo2","Endo3","Peri","Mechy","Stro1","Stro2","Stro3")
+new.cluster.ids <- c("Neut","MNP","B","Plas","Baso","NK1","NK2","T",
+                     "Trop","Endo1","Endo2","Endo3","Peri","Mechy","Stro1","Stro2","Stro3")
 names(new.cluster.ids) <- levels(Data.integrated)
 Data.integrated <- RenameIdents(Data.integrated, new.cluster.ids)
 Data.integrated@meta.data$celltype <- Data.integrated@active.ident
@@ -107,7 +106,14 @@ cell_type <- RunUMAP(cell_type, reduction="harmony", dims=pc.num) %>%
 DimPlot(cell_type, reduction = "umap", label = TRUE, repel = TRUE)
 saveRDS(cell_type, file = "~/cell_type.rds")
 
-
+### mapping the T and MNP subtypes to the initial cell clusters
+new.cluster.ids <- c("Neut","SC_Mo","SC_M","Mo","CM_Mo","M","cDC","pDC",
+                     "B","Plas","Baso","NK1","NK2","CD4_TN", "CD8_TN","MAIT_rgT","CD_TEFF","CD4-TP", "Th2","Treg",
+                     "Trop1","Trop2","Endo1","Endo2","Endo3","Peri","Mechy","Stro1","Stro2","Stro3")
+names(new.cluster.ids) <- levels(Data.integrated)
+Data.integrated <- RenameIdents(Data.integrated, new.cluster.ids)
+Data.integrated@meta.data$cellsubtype <- Data.integrated@active.ident
+saveRDS(Data.integrated, file = "~/Data.integrated_name.rds")
 
 #############################################################################################
 #########///////=========SCENIC (version 1.2.4)========\\\\\\\#############
@@ -381,7 +387,7 @@ dim(ligand_target_matrix_mouse)
 AllCellMap <- readRDS("~/Data.integrated_name.rds")
 library(Seurat)
 levels(AllCellMap)
-Cluster_28 <- c("PMN-MDSC","M-MDSC","M¦Õ-MDSC","Mo","CM-Mo","M¦Õ","cDC","pDC","B","Plas" ,
+Cluster_28 <- c("PMN-MDSC","M-MDSC","Mac-MDSC","Mo","CM-Mo","Mac","cDC","pDC","B","Plas" ,
                 "NK1","NK2","CD4-TN", "CD8-TN", "CD8-TEFF","MAIT/¦Ã¦ÄT","CD4-TP","Th2","Treg",
                 "Trop","Endo1", "Endo2","Endo3","Peri", "Mechy","Stro1","Stro2","Stro3")
 AllCellMap_28 <- subset(AllCellMap,idents = Cluster_28)
@@ -403,24 +409,24 @@ intersect(AllCellMap_28.markers$gene,gene127)
 ### DE_sender_receiver ######
 ## 1.5 foldchange receptors
 levels(AllCellMap_28)
-Non_MDSC = c("Mo","CM-Mo","M¦Õ","cDC","pDC","B","Plas","NK1","NK2",     
+Non_MDSC = c("Mo","CM-Mo","Mac","cDC","pDC","B","Plas","NK1","NK2",     
              "CD4-TN","CD8-TN","CD8-TEFF","MAIT/¦Ã¦ÄT","CD4-TP","Th2" , 
              "Treg","Trop","Endo1","Endo2","Endo3","Peri",    
              "Mechy","Stro1","Stro2","Stro3")
-MDSC = c("PMN-MDSC","M-MDSC","M¦Õ-MDSC")
+MDSC = c("PMN-MDSC","M-MDSC","Mac-MDSC")
 
 PMN-MDSC.markers = FindMarkers(AllCellMap_28,ident.1= MDSC[1],ident.2 = Non_MDSC)
 M-MDSC.markers = FindMarkers(AllCellMap_28,ident.1= MDSC[2],ident.2 = Non_MDSC)
-M¦Õ-MDSC.markers = FindMarkers(AllCellMap_28,ident.1= MDSC[3],ident.2 = Non_MDSC)
+Mac-MDSC.markers = FindMarkers(AllCellMap_28,ident.1= MDSC[3],ident.2 = Non_MDSC)
 PMN-MDSC.markers = PMN-MDSC.markers %>% mutate(gene = row.names(PMN-MDSC.markers),cluster = 'PMN-MDSC' )
 M-MDSC.markers = M-MDSC.markers %>% mutate(gene = row.names(M-MDSC.markers), cluster = 'M-MDSC')
-M¦Õ-MDSC.markers = M¦Õ-MDSC.markers %>% mutate(gene = row.names(M¦Õ-MDSC.markers),cluster = 'M¦Õ-MDSC')
-MDSC.dif.26.markers <- rbind(rbind(PMN-MDSC.markers,M-MDSC.markers),M¦Õ-MDSC.markers)
+Mac-MDSC.markers = Mac-MDSC.markers %>% mutate(gene = row.names(Mac-MDSC.markers),cluster = 'Mac-MDSC')
+MDSC.dif.26.markers <- rbind(rbind(PMN-MDSC.markers,M-MDSC.markers),Mac-MDSC.markers)
 write.csv(MDSC.dif.26.markers,'~/MDSC.dif.26.markers.csv')
 
 ## DE_receiver_processed_receptors
 DE_receiver_processed_receptors =  MDSC.dif.26.markers %>% 
-  filter(receiver %in% c("PMN-MDSC","M-MDSC","M¦Õ-MDSC")) %>%
+  filter(receiver %in% c("PMN-MDSC","M-MDSC","Mac-MDSC")) %>%
   filter(avg_log2FC >= 0.5849625,gene %in% lr_network_mouse$receptor) %>%
   mutate(significant = p_val_adj <= 0.05, present = pct.1 >= 0.05) %>% 
   mutate(pct.1 = pct.1+0.0001, pct.2 = pct.2 + 0.0001) %>% 
@@ -557,7 +563,7 @@ exprs_tbl <- p$data %>% as_tibble() %>%
   filter(!is.na(fraction))   
 
 exprs_tbl_receptor <- exprs_tbl %>% 
-  filter(gene %in% receptor, celltype %in% c("PMN-MDSC","M-MDSC","M¦Õ-MDSC") ) %>% 
+  filter(gene %in% receptor, celltype %in% c("PMN-MDSC","M-MDSC","Mac-MDSC") ) %>% 
   rename(receiver = celltype, receptor = gene,  receptor_expression = expression, 
          receptor_expression_scaled =expression_scaled,receptor_fraction = fraction) %>%
   mutate(scaled_receptor_expression_scaled = scale_quantile_adapted(receptor_expression_scaled)) %>%
@@ -566,7 +572,7 @@ exprs_tbl_receptor <- exprs_tbl %>%
 unique(exprs_tbl_receptor$receptor)
 exprs_tbl_target <- exprs_tbl %>% 
   filter(gene %in% unique(ligand_activities_targets$target),
-         celltype %in% c("PMN-MDSC","M-MDSC","M¦Õ-MDSC")) %>% 
+         celltype %in% c("PMN-MDSC","M-MDSC","Mac-MDSC")) %>% 
   rename(receiver = celltype, target = gene, 
          target_expression = expression, 
          target_expression_scaled =expression_scaled,
@@ -630,7 +636,7 @@ prioritization_tbl_ligand_target = combined_information_prioritized %>%
 
 top_ligand_receptor_niche_df <- prioritization_tbl_ligand_target %>% select(sender,receiver, ligand, receptor,prioritization_score)
 top_ligand_receptor_niche_df$sender <- factor(top_ligand_receptor_niche_df$sender,levels = levels(AllCellMap_28))
-top_ligand_receptor_niche_df$receiver <- factor(top_ligand_receptor_niche_df$receiver,levels = c("PMN-MDSC","M-MDSC","M¦Õ-MDSC"))
+top_ligand_receptor_niche_df$receiver <- factor(top_ligand_receptor_niche_df$receiver,levels = c("PMN-MDSC","M-MDSC","Mac-MDSC"))
 top_ligand_receptor_niche_df <- top_ligand_receptor_niche_df %>%
   arrange(sender,receiver) %>% mutate(SenderReceiver = paste(sender,receiver,sep = ' -> ')) %>%
   mutate(ligand_receptor = paste(ligand, receptor,sep='-')) %>% distinct() %>%
@@ -639,34 +645,34 @@ top_ligand_receptor_niche_df <- top_ligand_receptor_niche_df %>%
 
 
 ###### Doing plot ####
-level_SR <- c("PMN-MDSC -> PMN-MDSC", "PMN-MDSC -> M-MDSC",  "PMN-MDSC -> M¦Õ-MDSC"   ,   
-              "M-MDSC -> PMN-MDSC",   "M-MDSC -> M-MDSC",    "M-MDSC -> M¦Õ-MDSC",
-              "M¦Õ-MDSC -> PMN-MDSC",  "M¦Õ-MDSC -> M-MDSC",   "M¦Õ-MDSC -> M¦Õ-MDSC",
-              "Mo -> PMN-MDSC",       "Mo -> M-MDSC" ,       "Mo -> M¦Õ-MDSC" ,      
-              "CM-Mo -> PMN-MDSC" ,   "CM-Mo -> M-MDSC",     "CM-Mo -> M¦Õ-MDSC",     
-              "M -> PMN-MDSC"  ,      "M -> M-MDSC"  ,       "M -> M¦Õ-MDSC" ,     
-              "cDC -> PMN-MDSC" ,     "cDC -> M-MDSC" ,      "cDC -> M¦Õ-MDSC",
-              "pDC -> PMN-MDSC" ,     "pDC -> M-MDSC" ,      "pDC -> M¦Õ-MDSC",      
-              "B -> PMN-MDSC"  ,      "B -> M-MDSC" ,        "B -> M¦Õ-MDSC" ,
-              "Plas -> PMN-MDSC" ,    "Plas -> M-MDSC",      "Plas -> M¦Õ-MDSC",
-              "NK1 -> PMN-MDSC" ,     "NK1 -> M-MDSC",       "NK1 -> M¦Õ-MDSC" ,
-              "NK2 -> PMN-MDSC" ,     "NK2 -> M-MDSC",       "NK2 -> M¦Õ-MDSC",      
-              "CD4-TN -> PMN-MDSC",   "CD4-TN -> M-MDSC",    "CD4-TN -> M¦Õ-MDSC",
-              "CD8-TN -> PMN-MDSC" ,  "CD8-TN -> M-MDSC",    "CD8-TN -> M¦Õ-MDSC",
-              "CD8-TEFF -> PMN-MDSC", "CD8-TEFF -> M-MDSC",  "CD8-TEFF -> M¦Õ-MDSC",
-              "MAIT/¦Ã¦ÄT -> PMN-MDSC", "MAIT/¦Ã¦ÄT -> M-MDSC",  "MAIT/¦Ã¦ÄT -> M¦Õ-MDSC", 
-              "CD4-TP -> PMN-MDSC",   "CD4-TP -> M-MDSC",    "CD4-TP -> M¦Õ-MDSC",
-              "Th2 -> PMN-MDSC" ,     "Th2 -> M-MDSC",       "Th2 -> M¦Õ-MDSC",
-              "Treg -> PMN-MDSC",     "Treg -> M-MDSC",      "Treg -> M¦Õ-MDSC",
-              "Trop -> PMN-MDSC",     "Trop -> M-MDSC",      "Trop -> M¦Õ-MDSC",    
-              "Endo1 -> PMN-MDSC",    "Endo1 -> M-MDSC",     "Endo1 -> M¦Õ-MDSC",    
-              "Endo2 -> PMN-MDSC",    "Endo2 -> M-MDSC",     "Endo2 -> M¦Õ-MDSC",    
-              "Endo3 -> PMN-MDSC" ,   "Endo3 -> M-MDSC",     "Endo3 -> M¦Õ-MDSC",     
-              "Peri -> PMN-MDSC"  ,   "Peri -> M-MDSC",      "Peri -> M¦Õ-MDSC",     
-              "Mechy -> PMN-MDSC" ,   "Mechy -> M-MDSC",     "Mechy -> M¦Õ-MDSC",     
-              "Stro1 -> PMN-MDSC" ,   "Stro1 -> M-MDSC",     "Stro1 -> M¦Õ-MDSC",     
-              "Stro2 -> PMN-MDSC" ,   "Stro2 -> M-MDSC",     "Stro2 -> M¦Õ-MDSC",     
-              "Stro3 -> PMN-MDSC" ,   "Stro3 -> M-MDSC",     "Stro3 -> M¦Õ-MDSC")
+level_SR <- c("PMN-MDSC -> PMN-MDSC", "PMN-MDSC -> M-MDSC",  "PMN-MDSC -> Mac-MDSC"   ,   
+              "M-MDSC -> PMN-MDSC",   "M-MDSC -> M-MDSC",    "M-MDSC -> Mac-MDSC",
+              "Mac-MDSC -> PMN-MDSC",  "Mac-MDSC -> M-MDSC",   "Mac-MDSC -> Mac-MDSC",
+              "Mo -> PMN-MDSC",       "Mo -> M-MDSC" ,       "Mo -> Mac-MDSC" ,      
+              "CM-Mo -> PMN-MDSC" ,   "CM-Mo -> M-MDSC",     "CM-Mo -> Mac-MDSC",     
+              "M -> PMN-MDSC"  ,      "M -> M-MDSC"  ,       "M -> Mac-MDSC" ,     
+              "cDC -> PMN-MDSC" ,     "cDC -> M-MDSC" ,      "cDC -> Mac-MDSC",
+              "pDC -> PMN-MDSC" ,     "pDC -> M-MDSC" ,      "pDC -> Mac-MDSC",      
+              "B -> PMN-MDSC"  ,      "B -> M-MDSC" ,        "B -> Mac-MDSC" ,
+              "Plas -> PMN-MDSC" ,    "Plas -> M-MDSC",      "Plas -> Mac-MDSC",
+              "NK1 -> PMN-MDSC" ,     "NK1 -> M-MDSC",       "NK1 -> Mac-MDSC" ,
+              "NK2 -> PMN-MDSC" ,     "NK2 -> M-MDSC",       "NK2 -> Mac-MDSC",      
+              "CD4-TN -> PMN-MDSC",   "CD4-TN -> M-MDSC",    "CD4-TN -> Mac-MDSC",
+              "CD8-TN -> PMN-MDSC" ,  "CD8-TN -> M-MDSC",    "CD8-TN -> Mac-MDSC",
+              "CD8-TEFF -> PMN-MDSC", "CD8-TEFF -> M-MDSC",  "CD8-TEFF -> Mac-MDSC",
+              "MAIT/¦Ã¦ÄT -> PMN-MDSC", "MAIT/¦Ã¦ÄT -> M-MDSC",  "MAIT/¦Ã¦ÄT -> Mac-MDSC", 
+              "CD4-TP -> PMN-MDSC",   "CD4-TP -> M-MDSC",    "CD4-TP -> Mac-MDSC",
+              "Th2 -> PMN-MDSC" ,     "Th2 -> M-MDSC",       "Th2 -> Mac-MDSC",
+              "Treg -> PMN-MDSC",     "Treg -> M-MDSC",      "Treg -> Mac-MDSC",
+              "Trop -> PMN-MDSC",     "Trop -> M-MDSC",      "Trop -> Mac-MDSC",    
+              "Endo1 -> PMN-MDSC",    "Endo1 -> M-MDSC",     "Endo1 -> Mac-MDSC",    
+              "Endo2 -> PMN-MDSC",    "Endo2 -> M-MDSC",     "Endo2 -> Mac-MDSC",    
+              "Endo3 -> PMN-MDSC" ,   "Endo3 -> M-MDSC",     "Endo3 -> Mac-MDSC",     
+              "Peri -> PMN-MDSC"  ,   "Peri -> M-MDSC",      "Peri -> Mac-MDSC",     
+              "Mechy -> PMN-MDSC" ,   "Mechy -> M-MDSC",     "Mechy -> Mac-MDSC",     
+              "Stro1 -> PMN-MDSC" ,   "Stro1 -> M-MDSC",     "Stro1 -> Mac-MDSC",     
+              "Stro2 -> PMN-MDSC" ,   "Stro2 -> M-MDSC",     "Stro2 -> Mac-MDSC",     
+              "Stro3 -> PMN-MDSC" ,   "Stro3 -> M-MDSC",     "Stro3 -> Mac-MDSC")
 
 setdiff(unique(top_ligand_receptor_niche_df$SenderReceiver),level_SR)
 top_ligand_receptor_niche_df$SenderReceiver <- factor(top_ligand_receptor_niche_df$SenderReceiver,levels = level_SR)
@@ -706,22 +712,22 @@ top_ligand_receptor_niche_df_mat.com <- top_ligand_receptor_niche_df_mat.1[inter
 pheatmap(top_ligand_receptor_niche_df_mat.com, cluster_cols = F,cluster_rows = F,border=F,
          color =colorRampPalette(c("#4682B4", "white","red"))(100),fontsize = 6,cellwidth = 5.5,cellheight =5.5)
 
-## M¦Õ-MDSC specific ligand-receptors
-M¦Õ_MDSC_LR_127.gene <- c('Vtn-Itgb5','Adam9-Itgb5','Spp1-Itgb5','Sema4d-Plxnb2',
-                         'C3-C3ar1', 'Tgfb1-Tgfbr1','Tgfb2-Tgfbr1','Tgfb3-Tgfbr1',
-                         'Gas6-Axl','Pros1-Axl','Spn-Siglec1','A2m-Lrp1','Plat-Lrp1',
-                         'Serping1-Lrp1','Serpine1-Lrp1','Serpine2-Lrp1','Plau-Lrp1',
-                         'C3-Lrp1','Lrpap1-Lrp1')
-intersect = intersect(M¦Õ-MDSC_LR_127.gene,row.names(top_ligand_receptor_niche_df_mat.1))
+## Mac-MDSC specific ligand-receptors
+Mac_MDSC_LR_127.gene <- c('Vtn-Itgb5','Adam9-Itgb5','Spp1-Itgb5','Sema4d-Plxnb2',
+                          'C3-C3ar1', 'Tgfb1-Tgfbr1','Tgfb2-Tgfbr1','Tgfb3-Tgfbr1',
+                          'Gas6-Axl','Pros1-Axl','Spn-Siglec1','A2m-Lrp1','Plat-Lrp1',
+                          'Serping1-Lrp1','Serpine1-Lrp1','Serpine2-Lrp1','Plau-Lrp1',
+                          'C3-Lrp1','Lrpap1-Lrp1')
+intersect = intersect(Mac-MDSC_LR_127.gene,row.names(top_ligand_receptor_niche_df_mat.1))
 top_ligand_receptor_niche_df_mat.mac.spe <- top_ligand_receptor_niche_df_mat.1[intersect,]
 pheatmap(top_ligand_receptor_niche_df_mat.com, cluster_cols = F,cluster_rows = F,border=F,
          color =colorRampPalette(c("#4682B4", "white","red"))(100),fontsize = 6,cellwidth = 5.5,cellheight =5.5)
 
-## M¦Õ-MDSC and M-MDSC shared ligand-receptors
-M¦Õ_M_MDSC_LR_127.gene <- c('Ccl7-Ccr2','Ccl8-Ccr2','Ccl12-Ccr2','Ccl24-Ccr2','Ccl2-Ccr2',
-                           'Ccl2-Ccr5','Ccl3-Ccr5','Ccl4-Ccr5','Ccl5-Ccr5','Ccl7-Ccr5','Ccl8-Ccr5',
-                           'Ccl12-Ccr5','Cx3cl1-Cx3cr1','Col5a3-Sdc3','Csf1-Csf1r','Ifng-Ifngr2')
-intersect = intersect(M¦Õ-M_MDSC_LR_127.gene,row.names(top_ligand_receptor_niche_df_mat.1))
+## Mac-MDSC and M-MDSC shared ligand-receptors
+Mac_M_MDSC_LR_127.gene <- c('Ccl7-Ccr2','Ccl8-Ccr2','Ccl12-Ccr2','Ccl24-Ccr2','Ccl2-Ccr2',
+                            'Ccl2-Ccr5','Ccl3-Ccr5','Ccl4-Ccr5','Ccl5-Ccr5','Ccl7-Ccr5','Ccl8-Ccr5',
+                            'Ccl12-Ccr5','Cx3cl1-Cx3cr1','Col5a3-Sdc3','Csf1-Csf1r','Ifng-Ifngr2')
+intersect = intersect(Mac-M_MDSC_LR_127.gene,row.names(top_ligand_receptor_niche_df_mat.1))
 top_ligand_receptor_niche_df_mat.mac.m.com <- top_ligand_receptor_niche_df_mat.1[intersect,]
 pheatmap(top_ligand_receptor_niche_df_mat.mac.m.com, cluster_cols = F,cluster_rows = F,border=F,
          color =colorRampPalette(c("#4682B4", "white","red"))(100),fontsize = 6,cellwidth = 5.5,cellheight =5.5)
